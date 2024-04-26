@@ -1,6 +1,3 @@
-#This script takes two input args, the first is the input directory path, the second is the output directory path
-#This script will output the image for all pdb files and the rmsd scores between each pair of pdb files.
-#Make sure pymol is available in the environment
 import os
 import argparse
 import pymol
@@ -10,18 +7,24 @@ def visualize_and_calculate_rmsd(input_directory, output_directory):
     # Initialize PyMOL in non-GUI mode
     pymol.finish_launching(['pymol', '-c'])
 
-    # Find all PDB files in the input directory
-    pdb_files = [f for f in os.listdir(input_directory) if f.endswith('.pdb')]
-    pdb_paths = [os.path.join(input_directory, f) for f in pdb_files]
-
-    # Load each PDB file into PyMOL
+    # Traverse subdirectories to find PDB files
     objects = []
-    for pdb in pdb_paths:
-        object_name = os.path.splitext(os.path.basename(pdb))[0]
-        cmd.load(pdb, object_name)
-        objects.append(object_name)
+    for subdir, dirs, files in os.walk(input_directory):
+        for file in files:
+            if file.endswith('.pdb'):
+                pdb_path = os.path.join(subdir, file)
+                subdirectory_name = os.path.basename(subdir)
+                cmd.load(pdb_path, subdirectory_name)
+                objects.append(subdirectory_name)
+                
+    for molecule in objects:
+        # Generate individual image for each molecule
+        cmd.disable("all")
+        cmd.enable(molecule)
+        cmd.png(os.path.join(output_directory, f"{molecule}.png"))
 
-    # Generate an image for all molecules and save it to the output directory
+    # Generate a collective image for all molecules
+    cmd.enable("all")
     cmd.png(os.path.join(output_directory, "all_molecules.png"))
 
     # Calculate RMSD between each pair of PDB files
@@ -38,8 +41,8 @@ def visualize_and_calculate_rmsd(input_directory, output_directory):
             file.write(result + "\n")
 
 def main():
-    parser = argparse.ArgumentParser(description='Process PDB files in a specified directory and output to a specified directory.')
-    parser.add_argument('input_directory', type=str, help='Directory containing PDB files.')
+    parser = argparse.ArgumentParser(description='Process PDB files from subdirectories of a specified directory and output to a specified directory.')
+    parser.add_argument('input_directory', type=str, help='Directory containing subdirectories with PDB files.')
     parser.add_argument('output_directory', type=str, help='Directory to save output files.')
     args = parser.parse_args()
 
